@@ -1,0 +1,90 @@
+module es
+  use donnees
+  
+  implicit none
+
+contains
+
+  subroutine lit_entree
+    
+    open(1,file='param.dat')
+    read(1,*) Lx, Ly
+    read(1,*) Nx, Ny
+    read(1,*) cfl
+    read(1,*) Tmax
+    read(1,*) pHD, rhoHD, uxHD, uyHD !1
+    print*,"HD",pHD,rhoHD,uxHD,uyHD
+    read(1,*) pHG, rhoHG, uxHG, uyHG !2
+    print*,"HG",pHG, rhoHG, uxHG, uyHG
+    read(1,*) pBG, rhoBG, uxBG, uyBG !3
+    print*,"BG",pBG, rhoBG, uxBG, uyBG
+    read(1,*) pBD, rhoBD, uxBD, uyBD !4
+    print*,"BD",pBD, rhoBD, uxBD, uyBD
+    close(1)
+
+    dx = Lx/Nx
+    dy = Ly/Ny
+    
+    print*,"Lx =",Lx
+    print*,"Ly =",Ly
+    print*,"dx =",dx
+    print*,"dy =",dy
+    print*,"Temps final =",Tmax
+    print*,"Nombre de mailles",Nx*Ny
+    
+  end subroutine lit_entree
+
+  subroutine initialisation
+    real(PR) :: x,y
+    integer  :: i,j
+    
+    time = 0._PR
+    gamma = 1.4_PR
+
+    do i=1,Nx
+       x = (i-1)*dx !x(i-1/2)
+       do j=1,Ny
+          y = (j-1)*dy !y(j-1/2)
+          if(x>0.5_PR*Lx .and. y>0.5_PR*Ly) then
+             U(1,i,j) = rhoHD
+             U(2,i,j) = rhoHD*uxHD
+             U(3,i,j) = rhoHD*uyHD
+             U(4,i,j) = pHD/(gamma-1) + 0.5_PR*rhoHD*(uxHD**2+uyHD**2)
+          else if(x>0.5_PR*Lx .and. y<=0.5_PR*Ly) then
+             U(1,i,j) = rhoBD
+             U(2,i,j) = rhoBD*uxBD
+             U(3,i,j) = rhoBD*uyBD
+             U(4,i,j) = pBD/(gamma-1) + 0.5_PR*rhoBD*(uxBD**2+uyBD**2)
+          else if(x<=0.5_PR*LX .and. y>0.5_PR*Ly) then
+             U(1,i,j) = rhoHG
+             U(2,i,j) = rhoHG*uxHG
+             U(3,i,j) = rhoHG*uyHG
+             U(4,i,j) = pHG/(gamma-1) + 0.5_PR*rhoHG*(uxHG**2+uyHG**2)
+          else
+             U(1,i,j) = rhoBG
+             U(2,i,j) = rhoBG*uxBG
+             U(3,i,j) = rhoBG*uyBG
+             U(4,i,j) = pBG/(gamma-1) + 0.5_PR*rhoBG*(uxBG**2+uyBG**2)
+          end if
+       end do
+    end do
+    
+    nbAffichages = 100
+    
+  end subroutine initialisation
+
+  subroutine ecriture
+    integer :: i,j
+
+    open(1,file='density.dat')
+    do j=1,Ny
+       do i=1,Nx
+          write(1,*) (i-0.5_PR)*dx, (j-0.5_PR)*dy, rho(i,j)
+       end do
+       write(1,*)
+    end do
+    close(1)
+    
+  end subroutine ecriture
+  
+end module es

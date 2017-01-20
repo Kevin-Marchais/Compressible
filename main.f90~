@@ -1,0 +1,54 @@
+program compressibles
+  use donnees
+  use numerique
+  use es
+  
+  implicit none
+
+  integer :: iter,i,j
+  
+  call lit_entree
+
+  allocate(U(4,Nx,Ny), U1(4,Nx,Ny), F(4,Nx,Ny), G(4,Nx,Ny))
+  allocate(ux(Nx,Ny) , uy(Nx,Ny)  , p(Nx,Ny)  , E(Nx,Ny)  , rho(Nx,Ny), c(Nx,Ny))
+  allocate(bB(2:Ny)  , bH(2:Ny)   , bG(2:Nx)  , bD(2:Nx))
+  
+  call initialisation
+
+!!$  print*,"1 HD",pHD,rhoHD,uxHD,uyHD
+!!$  print*,"2 HG",pHG,rhoHG,uxHG,uyHG
+!!$  print*,"3 BG",pBG,rhoBG,uxBG,uyBG
+!!$  print*,"4 BD",pBD,rhoBD,uxBD,uyBD
+  call physique
+  
+  iter = 0
+  do while(time<Tmax)
+     call calcul_dt
+     if(time<dt)then
+        print*, "dt =",dt
+     end if
+     
+     if(nbAffichages*(iter/nbAffichages)==iter)then
+        print*,"t =",time
+     end if
+     print*,iter
+     call calcul_U1
+     iter = iter + 1
+     time = time + dt
+     U = U1
+     do i=1,Nx
+        do j=1,Ny
+           if( U(1,i,j)<0)print*,U(1,i,j),i,j,iter
+        end do
+     end do
+     
+     call physique
+  end do
+
+  call ecriture
+
+  deallocate(U, U1, F, G)
+  deallocate(ux, uy, p, E, rho, c)
+  deallocate(bB, bH, bG, bD)
+
+end program compressibles

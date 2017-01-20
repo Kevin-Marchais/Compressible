@@ -1,0 +1,68 @@
+module es
+  use donnees
+  use numerique
+  
+  implicit none
+
+contains
+
+  subroutine lit_entree
+    
+    open(1,file='param.dat')
+    read(1,*) Lx
+    read(1,*) Nx
+    read(1,*) cfl
+    read(1,*) Tmax
+    read(1,*) pG, rhoG, uxG !1
+    print*, pG, rhoG, uxG
+    read(1,*) pD, rhoD, uxD !2
+    print*, pD, rhoD, uxD
+    close(1)
+
+    dx = Lx/Nx
+    
+    print*,"Lx =",Lx
+    print*,"dx =",dx
+    print*,"Temps final =",Tmax
+    print*,"Nombre de mailles",Nx
+    
+  end subroutine lit_entree
+
+  subroutine initialisation
+    real(PR) :: x
+    integer  :: i
+    
+    time = 0._PR
+    gamma = 1.4_PR
+
+    do i=1,Nx
+       x = (i-1)*dx !x(i-1/2)
+       if(x>0.5_PR*Lx ) then
+          U(1,i) = rhoD
+          U(2,i) = rhoD*uxD
+          U(3,i) = pD/(gamma-1) + 0.5_PR*rhoD*uxD**2
+       else
+          U(1,i) = rhoG
+          U(2,i) = rhoG*uxG
+          U(3,i) = pG/(gamma-1) + 0.5_PR*rhoG*uxG**2
+       end if
+    end do
+    
+    nbAffichages = 100
+
+    call physique
+    
+  end subroutine initialisation
+
+  subroutine ecriture
+    integer :: i
+
+    open(1,file='density.dat')
+    do i=1,Nx
+       write(1,*) (i-0.5_PR)*dx, rho(i)
+    end do
+    close(1)
+    
+  end subroutine ecriture
+  
+end module es

@@ -1,0 +1,173 @@
+module numerique
+
+  use donnees
+
+  implicit none
+
+contains
+
+  subroutine calcul_U1
+    real(PR), allocatable, dimension(:,:,:) :: fluF, fluG
+    integer :: i,j,k
+    
+    allocate(fluF(4,2:Nx,2:Ny), fluG(4,2:Nx,2:Ny))
+    
+    do i=2,Nx
+       do j=2,Ny
+          fluF(:,i,j) = flux_num(U(:,i-1,j), U(:,i,j), F(:,i-1,j), F(:,i,j), bg(i), bd(i))
+          fluG(:,i,j) = flux_num(U(:,i,j-1), U(:,i,j), G(:,i,j-1), G(:,i,j), bb(j), bh(j))
+       end do
+    end do
+    
+    !F(i) = F(i-1/2)
+
+    do i = 2,Nx-1
+       do j = 2,Ny-1
+          do k=1,4
+             print*,i,j,U(1,i,j),dtsdx*(fluF(k,i+1,j)-fluF(k,i,j)),dtsdy*(fluG(k,i,j+1)-fluG(k,i,j)),&
+                  U(k,i,j) - dtsdx*(fluF(k,i+1,j)-fluF(k,i,j)) - dtsdy*(fluG(k,i,j+1)-fluG(k,i,j))
+          
+             !U1(:,i,j) = U(:,i,j) - dtsdx*(fluF(:,i,j)-fluF(:,i+1,j)) - dtsdy*(fluG(:,i,j)-fluG(:,i,j+1))
+             U1(k,i,j) = U(k,i,j) - dtsdx*(fluF(k,i+1,j)-fluF(k,i,j)) - dtsdy*(fluG(k,i,j+1)-fluG(k,i,j))
+          end do
+          !print*,i,j,U1(1,i,j)
+       end do
+    end do
+
+    call CLim
+
+    deallocate(fluF,fluG)
+    
+  end subroutine calcul_U1
+
+  subroutine CLim
+    integer  :: i,j
+    real(PR) :: x,y
+    
+    do i=1,Nx
+       x = (i-1)*dx !x(i-1/2)
+       if(x>0.5_PR*Lx) then
+          U1(1,i,1) = rhoBD
+          U1(2,i,1) = rhoBD*uxBD
+          U1(3,i,1) = rhoBD*uyBD
+          U1(4,i,1) = pBD/(gamma-1) + 0.5_PR*rhoBD*(uxBD**2+uyBD**2)
+
+          U1(1,i,Ny) = rhoHD
+          U1(2,i,Ny) = rhoHD*uxHD
+          U1(3,i,Ny) = rhoHD*uyHD
+          U1(4,i,Ny) = pHD/(gamma-1) + 0.5_PR*rhoHD*(uxHD**2+uyHD**2)
+       else
+          U1(1,i,1) = rhoBG
+          U1(2,i,1) = rhoBG*uxBG
+          U1(3,i,1) = rhoBG*uyBG
+          U1(4,i,1) = pBG/(gamma-1) + 0.5_PR*rhoBG*(uxBG**2+uyBG**2)
+
+          U1(1,i,Ny) = rhoHG
+          U1(2,i,Ny) = rhoHG*uxHG
+          U1(3,i,Ny) = rhoHG*uyHG
+          U1(4,i,Ny) = pHG/(gamma-1) + 0.5_PR*rhoHG*(uxHG**2+uyHG**2)
+       end if
+    end do
+
+    do j=1,Ny
+       y = (j-1)*dy !y(j-1/2)
+       if(y>0.5_PR*Ly) then
+          U1(1,1,j) = rhoHG
+          U1(2,1,j) = rhoHG*uxHG
+          U1(3,1,j) = rhoHG*uyHG
+          U1(4,1,j) = pHG/(gamma-1) + 0.5_PR*rhoHG*(uxHG**2+uyHG**2)
+
+          U1(1,Nx,j) = rhoHD
+          U1(2,Nx,j) = rhoHD*uxHD
+          U1(3,Nx,j) = rhoHD*uyHD
+          U1(4,Nx,j) = pHD/(gamma-1) + 0.5_PR*rhoHD*(uxHD**2+uyHD**2)
+       else
+          U1(1,1,j) = rhoBG
+          U1(2,1,j) = rhoBG*uxBG
+          U1(3,1,j) = rhoBG*uyBG
+          U1(4,1,j) = pBG/(gamma-1) + 0.5_PR*rhoBG*(uxBG**2+uyBG**2)
+
+          U1(1,Nx,j) = rhoBD
+          U1(2,Nx,j) = rhoBD*uxBD
+          U1(3,Nx,j) = rhoBD*uyBD
+          U1(4,Nx,j) = pBD/(gamma-1) + 0.5_PR*rhoBD*(uxBD**2+uyBD**2)
+       end if
+    end do
+    
+  end subroutine CLim
+
+  subroutine physique
+    integer  :: i,j
+    
+    do i=1,Nx
+       do j=1,Ny
+          rho(i,j) = U(1,i,j)
+          !print*,U(1,i,j),i,j,rho(i,j)
+          ux(i,j)  = U(2,i,j)/U(1,i,j)
+          uy(i,j)  = U(3,i,j)/U(1,i,j)
+          E(i,j)   = U(4,i,j)
+          p(i,j)   = (gamma-1)*(U(4,i,j)-0.5_PR*U(1,i,j)*(U(2,i,j)**2+U(3,i,j)**2))
+          c(i,j)   = sqrt(gamma*p(i,j)/rho(i,j))
+          
+          if(i/=1) then
+             F(1,i,j) = U(2,i,j)
+             F(2,i,j) = U(2,i,j)**2/U(1,i,j) + p(i,j)
+             F(3,i,j) = U(2,i,j)*U(3,i,j)/U(1,i,j)
+             F(4,i,j) = (U(4,i,j)+p(i,j))*U(2,i,j)/U(1,i,j)
+          end if
+          if(j/=1) then
+             G(1,i,j) = U(3,i,j)
+             G(2,i,j) = U(2,i,j)*U(3,i,j)/U(1,i,j)
+             G(3,i,j) = U(3,i,j)**2/U(1,i,j) + p(i,j)
+             G(4,i,j) = (U(4,i,j)+p(i,j))*U(3,i,j)/U(1,i,j)
+          end if
+       
+       end do
+    end do
+
+    ! vitesses
+    do i=2,Nx
+       bg(i) = min(ux(i,1)-c(i,1),ux(i-1,1)-c(i-1,1))
+       bd(i) = max(ux(i,1)+c(i,1),ux(i-1,1)+c(i-1,1))
+       do j=2,Ny
+          if(bg(i) > min(ux(i,j)-c(i,j),ux(i-1,j)-c(i-1,j))) bg(i)=min(ux(i,j)-c(i,j),ux(i-1,j)-c(i-1,j))
+          if(bd(i) < max(ux(i,j)+c(i,j),ux(i-1,j)+c(i-1,j))) bd(i)=max(ux(i,j)+c(i,j),ux(i-1,j)+c(i-1,j))
+       end do
+    end do
+    do j=2,Nx
+       bb(j) = min(uy(1,j)-c(1,j),uy(1,j-1)-c(1,j-1))
+       bh(j) = max(uy(1,j)+c(1,j),uy(1,j-1)+c(1,j-1))
+       do i=2,Nx
+          if(bb(j) > min(uy(i,j)-c(i,j),uy(i,j-1)-c(i,j-1))) bb(j)=min(uy(i,j)-c(i,j),uy(i,j-1)-c(i,j-1))
+          if(bh(j) < max(uy(i,j)+c(i,j),uy(i,j-1)+c(i,j-1))) bh(j)=max(uy(i,j)+c(i,j),uy(i,j-1)+c(i,j-1))
+       end do
+    end do
+    
+  end subroutine physique
+
+  function flux_num(Ug, Ud, Fg, Fd, bm, bp)
+    real(Pr), dimension(:), intent(in) :: Ug,Ud,Fg,Fd
+    real(PR), dimension(size(Ug,1))    :: flux_num
+    real(PR)                           :: bm,bp
+    real(PR),dimension(size(Ug,1)) :: num,denom,div
+    integer :: i
+
+    do i=1,size(Ug,1)
+       if (bp*bm<=0) then
+          flux_num = (bp*Fg(i)-bm*Fd(i)+bp*bm*(Ud(i)-Ug(i)))/(bp-bm)
+       else if (bm>0) then
+          flux_num = Fg(i)
+       else
+          flux_num = Fd(i)
+       end if
+    end do
+
+  end function flux_num
+  
+  subroutine calcul_dt
+    dt = 0.5_PR*cfl*min(dx/max(maxval(bg),maxval(bd)),dy/max(maxval(bb),maxval(bh)))
+    dtsdx = dt/dx
+    dtsdy = dt/dy
+  end subroutine calcul_dt
+  
+end module numerique

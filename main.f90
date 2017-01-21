@@ -9,13 +9,12 @@ program compressibles
   
   call lit_entree
 
-  allocate(U0(4,Nx,Ny), U(4,Nx,Ny), F(4,Nx,Ny), G(4,Nx,Ny))
+  allocate(U0(4,Nx,Ny), U(4,Nx,Ny))
+  allocate(U_g(4,2:Nx,Ny), U_d(4,2:Nx,Ny), U_b(4,Nx,2:Ny), U_h(4,Nx,2:Ny))
   allocate(ux(Nx,Ny) , uy(Nx,Ny)  , p(Nx,Ny)  , E(Nx,Ny)  , rho(Nx,Ny), c(Nx,Ny))
   allocate(bB(2:Ny)  , bH(2:Ny)   , bG(2:Nx)  , bD(2:Nx))
   
   call initialisation
-
-  call physique
 
   ordre = 1
   
@@ -28,14 +27,14 @@ program compressibles
      if(nbAffichages*(iter/nbAffichages)==iter)then
         print*,"t =",time
      end if
-     print*,iter
+     print*,iter,time
 
      if(ordre==1) then
         call Euler_explicite ! ordre 1
      else if(ordre==2) then
-        call RK2(0.5_PR) ! ordre 2
+        !call RK2(0.5_PR) ! ordre 2
      else if(ordre==4) then
-        call RK4 ! ordre 4
+        !call RK4 ! ordre 4
      else
         print*,"Mauvais ordre"
         exit
@@ -45,13 +44,12 @@ program compressibles
      time = time + dt
      U0 = U
      
-     call physique
-     
   end do
 
   call ecriture
 
-  deallocate(U0, U, F, G)
+  deallocate(U0, U)
+  deallocate(U_g,U_d,U_b,U_h)
   deallocate(ux, uy, p, E, rho, c)
   deallocate(bB, bH, bG, bD)
 

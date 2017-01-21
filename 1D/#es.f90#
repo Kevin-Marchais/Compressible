@@ -47,7 +47,7 @@ contains
     end do
     
     nbAffichages = 100
-
+    
     call reconstruction
     print*,UG(1,1)
     call vitesses(UG,UD,bg,bd)

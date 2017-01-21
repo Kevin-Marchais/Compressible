@@ -1,6 +1,7 @@
 module numerique
 
   use donnees
+  use ordre2
 
   implicit none
 
@@ -10,12 +11,13 @@ contains
     real(PR), dimension(4,2:Nx,2:Ny) :: fluF, fluG
     integer :: i,j
 
-    !print*, U0(:,228,395)
-    
+    call reconstruction
+
     do i=2,Nx
        do j=2,Ny
-          fluF(:,i,j) = flux_num(U0(:,i-1,j), U0(:,i,j), F(:,i-1,j), F(:,i,j), bg(i), bd(i))
-          fluG(:,i,j) = flux_num(U0(:,i,j-1), U0(:,i,j), G(:,i,j-1), G(:,i,j), bb(j), bh(j))
+          !if(iter==1 .and. i==2 .and. j==202) print*,iter,i,j,U_d(:,i,j)
+          fluF(:,i,j) = flux_HLLx(U_g(:,i,j), U_d(:,i,j))
+          fluG(:,i,j) = flux_HLLy(U_b(:,i,j), U_h(:,i,j))
        end do
     end do
     
@@ -23,148 +25,17 @@ contains
 
     do i = 2,Nx-1
        do j = 2,Ny-1
+           if(iter==0 .and. i==2 .and. j==202) then
+              !print*,iter,i,j,dtsdy!fluG(:,i,j+1)!U0(:,i,j)
+           end if
           U(:,i,j) = U0(:,i,j) - dtsdx*(fluF(:,i+1,j)-fluF(:,i,j)) - dtsdy*(fluG(:,i,j+1)-fluG(:,i,j))
+         
        end do
     end do
 
     call CLim(U)
     
   end subroutine Euler_explicite
-
-  subroutine RK2(alpha)
-    real(PR), dimension(4,2:Nx,2:Ny)     :: fluF, fluG, fluF1, fluG1
-    real(PR), dimension(4,Nx,Ny)         :: U1,F1,G1
-    real(PR), dimension(4,2:Nx-1,2:Ny-1) :: k1,k2
-    real(PR)                             :: alpha
-    integer :: i,j
-
-    print*,U0(:,228,395)
-
-    !k1
-    do i=2,Nx
-       do j=2,Ny
-          fluF(:,i,j) = flux_num(U0(:,i-1,j), U0(:,i,j), F(:,i-1,j), F(:,i,j), bg(i), bd(i))
-          fluG(:,i,j) = flux_num(U0(:,i,j-1), U0(:,i,j), G(:,i,j-1), G(:,i,j), bb(j), bh(j))
-       end do
-    end do
-    
-    do i=2,Nx-1
-       do j=2,Ny-1
-          k1(:,i,j) = - dtsdx*(fluF(:,i+1,j)-fluF(:,i,j)) - dtsdy*(fluG(:,i,j+1)-fluG(:,i,j))
-          U1(:,i,j) = U0(:,i,j) + dt*k1(:,i,j)/(2._PR*alpha)
-       end do
-    end do
-    
-    ! k2
-    call CLim(U1)
-    !if(iter==66)
-    !print*,"U0 =",U0(3,228,395)
-    !print*,"k1 =",k1(3,228,395)
-    F1 = calculF(U1)
-    G1 = calculG(U1)
-    
-    do i=2,Nx
-       do j=2,Ny
-          fluF1(:,i,j) = flux_num(U1(:,i-1,j), U1(:,i,j), F1(:,i-1,j), F1(:,i,j), bg(i), bd(i))
-          fluG1(:,i,j) = flux_num(U1(:,i,j-1), U1(:,i,j), G1(:,i,j-1), G1(:,i,j), bb(j), bh(j))
-       end do
-    end do
-    
-    do i=2,Nx-1
-       do j=2,Ny-1
-          k2(:,i,j) = - dtsdx*(fluF1(:,i+1,j)-fluF1(:,i,j)) - dtsdy*(fluG1(:,i,j+1)-fluG1(:,i,j))
-          U(:,i,j) = U0(:,i,j) + (1-alpha)*dt*k1(:,i,j) + alpha*dt*k2(:,i,j)
-       end do
-    end do
-    
-    call CLim(U)
-    
-  end subroutine RK2
-
-  subroutine RK4
-    real(PR), dimension(4,2:Nx,2:Ny) :: fluF, fluG, fluF1, fluG1, fluF2,fluG2, fluF3, fluG3
-    real(PR), dimension(4,Nx,Ny)     :: U1,U2,U3,F1,F2,F3,G1,G2,G3,k1,k2,k3,k4
-    real(PR)                         :: alpha
-    integer :: i,j
-
-    !k1
-    do i=2,Nx
-       do j=2,Ny
-          fluF(:,i,j) = flux_num(U0(:,i-1,j), U0(:,i,j), F(:,i-1,j), F(:,i,j), bg(i), bd(i))
-          fluG(:,i,j) = flux_num(U0(:,i,j-1), U0(:,i,j), G(:,i,j-1), G(:,i,j), bb(j), bh(j))
-       end do
-    end do
-    
-    do i=2,Nx-1
-       do j=2,Ny-1
-          k1(:,i,j) = - dtsdx*(fluF(:,i+1,j)-fluF(:,i,j)) - dtsdy*(fluG(:,i,j+1)-fluG(:,i,j))
-          U1(:,i,j) = U0(:,i,j) + dt*k1(:,i,j)/2._PR
-       end do
-    end do
-    
-    ! k2
-    
-    call CLim(U1)
-    F1 = calculF(U1)
-    G1 = calculG(U1)
-    
-    do i=2,Nx
-       do j=2,Ny
-          fluF1(:,i,j) = flux_num(U1(:,i-1,j), U1(:,i,j), F1(:,i-1,j), F1(:,i,j), bg(i), bd(i))
-          fluG1(:,i,j) = flux_num(U1(:,i,j-1), U1(:,i,j), G1(:,i,j-1), G1(:,i,j), bb(j), bh(j))
-       end do
-    end do
-    
-    do i=2,Nx-1
-       do j=2,Ny-1
-          k2(:,i,j) = - dtsdx*(fluF1(:,i+1,j)-fluF1(:,i,j)) - dtsdy*(fluG1(:,i,j+1)-fluG1(:,i,j))
-          U2(:,i,j) = U0(:,i,j) + dt*k2(:,i,j)/2._PR
-       end do
-    end do
-    
-    ! k3
-    call CLim(U2)
-    F2 = calculF(U2)
-    G2 = calculG(U2)
-
-    do i=2,Nx
-       do j=2,Ny
-          fluF2(:,i,j) = flux_num(U2(:,i-1,j), U2(:,i,j), F2(:,i-1,j), F2(:,i,j), bg(i), bd(i))
-          fluG2(:,i,j) = flux_num(U2(:,i,j-1), U2(:,i,j), G2(:,i,j-1), G2(:,i,j), bb(j), bh(j))
-       end do
-    end do
-    
-    do i=2,Nx-1
-       do j=2,Ny-1
-          k3(:,i,j) = - dtsdx*(fluF2(:,i+1,j)-fluF2(:,i,j)) - dtsdy*(fluG2(:,i,j+1)-fluG2(:,i,j))
-          U3(:,i,j) = U0(:,i,j) + dt*k3(:,i,j)
-       end do
-    end do
-
-    !k4
-    call CLim(U3)
-    F3 = calculF(U3)
-    G3 = calculG(U3)
-    
-    do i=2,Nx
-       do j=2,Ny
-          fluF3(:,i,j) = flux_num(U3(:,i-1,j), U3(:,i,j), F3(:,i-1,j), F3(:,i,j), bg(i), bd(i))
-          fluG3(:,i,j) = flux_num(U3(:,i,j-1), U3(:,i,j), G3(:,i,j-1), G3(:,i,j), bb(j), bh(j))
-       end do
-    end do
-
-    do i=2,Nx-1
-       do j=2,Ny-1
-          k4(:,i,j) = - dtsdx*(fluF3(:,i+1,j)-fluF3(:,i,j)) - dtsdy*(fluG3(:,i,j+1)-fluG3(:,i,j))
-          U(:,i,j) = U0(:,i,j) + dt/6._PR * (k1(:,i,j)+2*k2(:,i,j)+2*k3(:,i,j)+k4(:,i,j))
-       end do
-    end do
-
-    ! RK4
-    
-    call CLim(U)
-    
-  end subroutine RK4
 
   subroutine CLim(CL)
     integer  :: i,j
@@ -223,95 +94,88 @@ contains
     
   end subroutine CLim
 
-  function calculF(X)
-    real(PR), dimension(4,Nx,Ny) :: calculF
-    real(PR), dimension(4,Nx,Ny) :: X
-    real(PR), dimension(Nx,Ny)   :: pression
+  function F(X)
+    real(PR), dimension(4) :: F
+    real(PR), dimension(4) :: X
+    real(PR)   :: pression
     integer :: i,j
 
-    do i=1,Nx
-       do j=1,Ny
-          !if(iter>65)print*,iter,i,j,"ok1",X(4,i,j),X(1,i,j),X(2,i,j),X(3,i,j)
-          pression(i,j) = (gamma-1._PR)*(X(4,i,j)-0.5_PR*X(1,i,j)*(X(2,i,j)**2+X(3,i,j)**2))
-          !if(iter>65)print*,iter,i,j,"ok2"
-       end do
-    end do
+    pression = (gamma-1._PR)*(X(4)-0.5_PR*X(1)*(X(2)**2+X(3)**2))
+
     
-    calculF(1,:,:) = X(2,:,:)
-    calculF(2,:,:) = X(2,:,:)**2/X(1,:,:) + pression
-    calculF(3,:,:) = X(2,:,:)*X(3,:,:)/X(1,:,:)
-    calculF(4,:,:) = (X(4,:,:)+pression)*X(2,:,:)/X(1,:,:)
+    F(1) = X(2)
+    F(2) = X(2)**2/X(1) + pression
+    F(3) = X(2)*X(3)/X(1)
+    F(4) = (X(4)+pression)*X(2)/X(1)
 
-  end function calculF
+  end function F
 
-  function calculG(X)
-    real(PR), dimension(4,Nx,Ny) :: calculG
-    real(PR), dimension(4,Nx,Ny) :: X
-    real(PR), dimension(Nx,Ny)   :: pression
+  function G(X)
+    real(PR), dimension(4) :: G
+    real(PR), dimension(4) :: X
+    real(PR)  :: pression
 
-    pression = (gamma-1._PR)*(X(4,:,:)-0.5_PR*X(1,:,:)*(X(2,:,:)**2+X(3,:,:)**2))    
+    pression = (gamma-1._PR)*(X(4)-0.5_PR*X(1)*(X(2)**2+X(3)**2))    
 
-    calculG(1,:,:) = X(3,:,:)
-    calculG(2,:,:) = X(2,:,:)*X(3,:,:)/X(1,:,:)
-    calculG(3,:,:) = X(3,:,:)**2/X(1,:,:) + pression
-    calculG(4,:,:) = (X(4,:,:)+pression)*X(3,:,:)/X(1,:,:)
+    G(1) = X(3)
+    G(2) = X(2)*X(3)/X(1)
+    G(3) = X(3)**2/X(1) + pression
+    G(4) = (X(4)+pression)*X(3)/X(1)
 
-  end function calculG
-
-  subroutine physique
-    integer :: i,j
-    
-    rho = U0(1,:,:)
-    ux  = U0(2,:,:)/U0(1,:,:)
-    uy  = U0(3,:,:)/U0(1,:,:)
-    E   = U0(4,:,:)
-    p   = (gamma-1)*(U0(4,:,:)-0.5_PR*U0(1,:,:)*(U0(2,:,:)**2+U0(3,:,:)**2))
-    c   = sqrt(gamma*p/rho)
-    
-    ! Pas optimisé calcul de p avant, puis dans calculF et dans calculG
-    F = calculF(U0) 
-    G = calculG(U0)
-
-    ! vitesses
-    !bg(i) = min(minval(ux(i,:)-c(i,:)),minval(ux(i-1,:)-c(i-1,:)))
-    do i=2,Nx
-       bg(i) = min(ux(i,1)-c(i,1),ux(i-1,1)-c(i-1,1))
-       bd(i) = max(ux(i,1)+c(i,1),ux(i-1,1)+c(i-1,1))
-       do j=2,Ny
-          if(bg(i) > min(ux(i,j)-c(i,j),ux(i-1,j)-c(i-1,j))) bg(i)=min(ux(i,j)-c(i,j),ux(i-1,j)-c(i-1,j))
-          if(bd(i) < max(ux(i,j)+c(i,j),ux(i-1,j)+c(i-1,j))) bd(i)=max(ux(i,j)+c(i,j),ux(i-1,j)+c(i-1,j))
-       end do
-    end do
-    do j=2,Nx
-       bb(j) = min(uy(1,j)-c(1,j),uy(1,j-1)-c(1,j-1))
-       bh(j) = max(uy(1,j)+c(1,j),uy(1,j-1)+c(1,j-1))
-       do i=2,Nx
-          if(bb(j) > min(uy(i,j)-c(i,j),uy(i,j-1)-c(i,j-1))) bb(j)=min(uy(i,j)-c(i,j),uy(i,j-1)-c(i,j-1))
-          if(bh(j) < max(uy(i,j)+c(i,j),uy(i,j-1)+c(i,j-1))) bh(j)=max(uy(i,j)+c(i,j),uy(i,j-1)+c(i,j-1))
-       end do
-    end do
-    
-  end subroutine physique
-
-  function flux_num(Ug, Ud, Fg, Fd, bm, bp)
-    real(PR), dimension(:), intent(in) :: Ug,Ud,Fg,Fd
-    real(PR), dimension(size(Ug,1))    :: flux_num
-    real(PR)                           :: bm,bp
-    real(PR),dimension(size(Ug,1)) :: num,denom,div
+  end function G
+  
+  function flux_HLLx(Ug, Ud)
+    real(PR), dimension(size(U,1)), intent(in) :: Ug,Ud
+    real(PR), dimension(size(U,1))     :: flux_HLLx
+    real(PR)                           :: bm,bp,cd,cg
     integer :: i
 
-    if (bp*bm<=0) then
-       flux_num = (bp*Fg-bm*Fd+bp*bm*(Ud-Ug))/(bp-bm)
+    cg = sqrt(gamma*(gamma-1._PR)*(Ug(4)-0.5_PR*Ug(1)*(Ug(2)**2+Ug(3)**2))/Ug(1))
+    !print*,iter, Ud
+    cd = sqrt(gamma*(gamma-1._PR)*(Ud(4)-0.5_PR*Ud(1)*(Ud(2)**2+Ud(3)**2))/Ud(1))
+    
+    bp = max(Ug(2)/Ug(1) + cg, Ud(2)/Ud(1) + cd)
+    bm = min(Ug(2)/Ug(1) - cg, Ud(2)/Ud(1) - cd)
+
+    if (bp<=0._PR .and. bm>=0._PR) then
+       flux_HLLx = (bp*F(Ug)-bm*F(Ud)+bp*bm*(Ud-Ug))/(bp-bm)
     else if (bm>0) then
-       flux_num = Fg
+       flux_HLLx = F(Ug)
     else
-       flux_num = Fd
+       flux_HLLx = F(Ud)
     end if
 
-  end function flux_num
+  end function flux_HLLx
+
+  function flux_HLLy(Ub, Uh)
+    real(PR), dimension(size(U,1)), intent(in) :: Uh, Ub
+    real(PR), dimension(size(U,1))    :: flux_HLLy
+    real(PR)                           :: bm,bp,cb,ch
+    integer :: i
+
+    cb = sqrt(gamma*(gamma-1._PR)*(Ub(4)-0.5_PR*Ub(1)*(Ub(2)**2+Ub(3)**2))/Ub(1))
+    ch = sqrt(gamma*(gamma-1._PR)*(Uh(4)-0.5_PR*Uh(1)*(Uh(2)**2+Uh(3)**2))/Uh(1))
+    
+    bp = max(Ub(2)/Ub(1) + cb, Uh(2)/Uh(1) + ch)
+    bm = min(Ub(2)/Ub(1) - cb, Uh(2)/Uh(1) - ch)
+
+    if (bp*bm<=0) then
+       flux_HLLy = (bp*G(Ub)-bm*G(Uh)+bp*bm*(Uh-Ub))/(bp-bm)
+    else if (bm>0) then
+       flux_HLLy = F(Ub)
+    else
+       flux_HLLy = F(Uh)
+    end if
+
+  end function flux_HLLy
   
   subroutine calcul_dt
+    real(PR),dimension(Nx,Ny) :: pression,son
+
+    
+    
     dt = 0.5_PR*cfl*min(dx/max(maxval(bg),maxval(bd)),dy/max(maxval(bb),maxval(bh)))
+    !dt = 0.0000000002_PR
     dtsdx = dt/dx
     dtsdy = dt/dy
   end subroutine calcul_dt

@@ -41,6 +41,7 @@ contains
     time = 0._PR
     iter = 0
     gamma = 1.4_PR
+    xorder = 1
 
     do i=1,Nx
        x = (i-1)*dx !x(i-1/2)
@@ -76,6 +77,13 @@ contains
 
   subroutine ecriture
     integer :: i,j
+
+    rho = U0(1,:,:)
+    ux  = U0(2,:,:)/U0(1,:,:)
+    uy  = U0(3,:,:)/U0(1,:,:)
+    E   = U0(4,:,:)
+    p   = (gamma-1)*(U0(4,:,:)-0.5_PR*U0(1,:,:)*(U0(2,:,:)**2+U0(3,:,:)**2))
+    c   = sqrt(gamma*p/rho)
 
     open(1,file='density.dat')
     do i=1,Nx

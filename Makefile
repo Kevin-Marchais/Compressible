@@ -1,8 +1,8 @@
 PROG =	run
 
-SRCS =	es.f90 main.f90 numerique.f90 donnees.f90
+SRCS =	es.f90 main.f90 numerique.f90 donnees.f90 ordre2.f90
 
-OBJS =	es.o main.o numerique.o donnees.o
+OBJS =	es.o main.o numerique.o donnees.o ordre2.o
 
 LIBS =	
 
@@ -26,5 +26,6 @@ clean:
 
 es.o: donnees.o
 main.o: es.o numerique.o donnees.o
-numerique.o: donnees.o
+numerique.o: donnees.o ordre2.o
 donnees.o: 
+ordre2.o: donnees.o

@@ -5,7 +5,8 @@ module donnees
   
   integer                                 :: Nx, Ny
   real(PR), allocatable, dimension(:,:)   :: rho, ux, uy, E, p, c
-  real(PR), allocatable, dimension(:,:,:) :: U0, U, F, G
+  real(PR), allocatable, dimension(:,:,:) :: U0, U
+  real(PR), allocatable, dimension(:,:,:) :: U_g,U_d,U_h,U_b
   real(PR), allocatable, dimension(:)     :: bB, bH, bG, bD
   real(PR)                                :: dx, dy, Lx, Ly
   real(PR)                                :: dt, dtsdx, dtsdy, Tmax, time
@@ -15,6 +16,6 @@ module donnees
   real(PR)                                :: pHD,rhoHD,uxHD,uyHD
   real(PR)                                :: pHG,rhoHG,uxHG,uyHG
   
-  integer                                 :: nbAffichages, iter
+  integer                                 :: nbAffichages, iter, xorder
 
 end module donnees
